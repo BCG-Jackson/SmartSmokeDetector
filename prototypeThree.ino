@@ -6,20 +6,24 @@
 #include <Arduino.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <time.h>
+#include <Time.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-#define MAXSMOKE 20
-#define MAXCARBON 20
+#define MAXSMOKE 150
+#define MAXCARBON 150
 #define SNOOZETIME 250 //time in seconds
 #define MAXREADINGS 32768
 
 #define SMOKEPIN A0
 #define COPIN A1
 #define SIRENPIN A2
-#define TEMPPIN A3 //12
+#define TEMPPIN 12
 #define LEDPIN 13
+
+//Global variables for the temperature sensor since it wouldn't work when placed in the TempSensor class
+OneWire oneWire(TEMPPIN);
+DallasTemperature sensors(&oneWire);
 
 ///////////////////////Actuators////////////////////////////////////
 
@@ -36,7 +40,7 @@ class LEDController {
     }
 
     bool deactivate() {
-      analogWrite(sPin,0);
+      analogWrite(sPin, 0);
       return true;
     }
 
@@ -82,23 +86,17 @@ class SmokeDetector {
 
 
 
-class TempSensor{
-  int temp_sensor;
+class TempSensor {
   public:
-  OneWire oneWirePin;
-  DallasTemperature sensors;
-//  OneWire oneWirePin;
-//  DallasTemperature sensors;
-public:
-TempSensor(){
-   oneWirePin(temp_sensor);
-   sensors(&oneWirePin);
-}
+    TempSensor() {
+      sensors.begin();  // Start up the library
+    }
 
-public:
-double getReading(){
-  return 0;
-}
+  public:
+    double getReading() {
+      sensors.requestTemperatures();
+      return ((sensors.getTempCByIndex(0) * 9.0) / 5.0 + 32.0);      
+    }
 
 };
 
@@ -161,27 +159,18 @@ class Controller {
     bool online;
 
     void getSensorData() { //Collect readings from the sensors.
+      Serial.println("Getting sensor data");
       currentReadings[0] = sd.getReading();
 
       //Code for the CO2 sensor reading
       if (readingsSaved % 150 == 0) {
         currentReadings[1] = cd.getReading();
-        if (Serial.available()) {
-          Serial.print("Smoke Sensor: ");
-          Serial.print(currentReadings[0]);
-          Serial.print("\tCarbon Monoxide: ");
-          Serial.print(currentReadings[1]);
-          Serial.print("\t Temperature: ");
-          Serial.println(currentReadings[2]);
-        }
       } else if (readingsSaved % 100 == 0) {
         cd.warmUpTwo();
       } else if (readingsSaved % 50 == 0) {
         cd.warmUpOne();
       }
-       Serial.print("Here3");
       currentReadings[2] = ts.getReading();
-      Serial.println(currentReadings[2]);
     }
 
     void logData() { //Reset the average reading values if the average includes more than MAXREADINGS readings, incorporates the new currentReadings into the average
@@ -224,9 +213,10 @@ class Controller {
     boolean isSnoozed() { //Checks to see if the the current time in milliseconds is larger than the end of the snooze period (HushEnd)
       time_t currentTime = time(0);
       int difference = hushEnd - currentTime;
-      if (difference < 0) {
+      if (difference <= 0) {
         return false;
       } else {
+        Serial.println("I'm Snoozed!");
         return true;
       }
     }
@@ -250,6 +240,14 @@ class Controller {
         getSensorData();
         logData();
         interpretData();
+        if (Serial.available()) {
+          Serial.print("Smoke Sensor: ");
+          Serial.print(currentReadings[0]);
+          Serial.print("\tCarbon Monoxide: ");
+          Serial.print(currentReadings[1]);
+          Serial.print("\tTemperature: ");
+          Serial.println(currentReadings[2]);
+        }
         delay(10);
       }
     }
