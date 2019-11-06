@@ -2,13 +2,17 @@
 #include <SPI.h>
 #include <WiFiNINA.h>
 
+
+
 #define ppp client.println
 
 char ssid[] = "WSU_EZ_Connect";
 
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
+class Controller{};
 
+void ffff(Controller a){}
 
 void SetupServer() {
   Serial.begin(9600);      // initialize serial communication
@@ -41,7 +45,7 @@ void SetupServer() {
 
 
 
-void LoopServer() {
+void UpdateHTML(Controller cont) {
   WiFiClient client = server.available();   // listen for incoming clients
 
   if (client) {                             // if you get a client,
@@ -65,13 +69,22 @@ void LoopServer() {
 
 ppp("<!DOCTYPE html>");
   ppp("<head>");
-    ppp("<style>body {background-color:blue;}a {color:orange;}</style>");
+    ppp("<style>body {background-color:#00e7ff52;} a {color:orange;}</style>");
+    ppp("<style>div {border-style: groove; padding: 10px; } </style>");
+    ppp("<style>button {padding: 20px; width: 200px; } </style>");
+    ppp("<style>p {padding: 10px; display: block; white-space: pre; font-family: Consolas;} </style>");
   ppp("</head>");
   ppp("<body>");
     ppp("<div>");
-      ppp("<button type=\"button\" onclick=\"window.location.href = \'/toggleSpotlight\'\"> Turn spotlight " + GetOppositeSpotlightState() + "</button><br>");
+      ppp("<button type=\"button\" onclick=\"window.location.href = \'/toggleSpotlight\'\"> Turn spotlight " + cont.getOppositeLEDState() + "</button><br>");
       //ppp("Click <a href=\"/H\">here</a> turn the LED on pin 9 on<br>");
-      ppp("Click <a href=\"/L\">here</a> turn the LED on pin 9 off<br>");
+      ppp("<button type=\"button\" onclick=\"window.location.href = \'/toggleAlarm\'\"> Turn alarm " + cont.getOppositeSirenState() + "</button><br>");
+      
+    ppp("</div>");
+    ppp("<div>");
+      ppp("<p>Temerature:         "+ String(cont.currentReading[2], DEC) +" &#176;C</p>");
+      ppp("<p>Carbon Monoxide:    "+ String(cont.currentReading[1], DEC) +" parts per million</p>");
+      ppp("<p>Smoke:              "+ String(cont.currentReading[0], DEC) +" parts per million</p>");
     ppp("</div>");
 
   ppp("</body>");
@@ -90,11 +103,13 @@ ppp("</html>");
         } else if (c != '\r') {  // if you got anything else but a carriage return character,
           currentLine += c;      // add it to the end of the currentLine
         }
-
-
         if (currentLine.endsWith("GET /toggleSpotlight")) {
-          ToggleSpotlight();
+          cont.toggleSpotlight();
         }
+        else if (currentLine.endsWith("GET /toggleAlarm")) {
+          cont.toggleAlarm();
+        }
+        
 
         
       }
