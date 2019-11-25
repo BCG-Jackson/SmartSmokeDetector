@@ -301,9 +301,6 @@ class Controller {
         Serial.println("Carbon monoxide detected!");
         activateAlarm();
         activateLights();
-      } else {
-        deactivateAlarm();
-        deactivateLights();
       }
     }
     //If the CO reading is over the threshold
@@ -506,6 +503,9 @@ void serverCallback(){
 
 void setup() {
   Serial.begin(9600);
+
+  c.deactivateLights();
+  c.deactivateAlarm();
 
   //Configure the Controller
   offlineThread.onRun(offlineCallback);
